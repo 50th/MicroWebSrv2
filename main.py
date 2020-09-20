@@ -222,6 +222,16 @@ mws2 = MicroWebSrv2()
 # For embedded MicroPython, use a very light configuration,
 mws2.SetEmbeddedConfig()
 
+# mws2.RootPath = '/flash/www' # E.g., MicroPython
+# Confirm that RootPath will resolve for home URL
+HOME = '/'
+if not mws2.ResolvePhysicalPath(HOME):
+    raise MicroWebSrv2Exception(
+        "RootPath '%s' does not resolve with URL '%s'" % (mws2.RootPath, HOME)
+    )
+
+# All pages not found will be redirected to the home,
+mws2.NotFoundURL = HOME
 # Allow up to 32 MB upload
 mws2.MaxRequestContentLength = 32 * 1024 * 1024
 

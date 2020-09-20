@@ -3,10 +3,17 @@ The MIT License (MIT)
 Copyright © 2019 Jean-Christophe Bos & HC² (www.hc2.fr)
 """
 
+import sys
+_IS_MICROPYTHON = sys.implementation.name == 'micropython'
 
 from   _thread  import allocate_lock, start_new_thread, stack_size
 from   time     import sleep
-from   select   import select
+if _IS_MICROPYTHON:
+    from select import poll
+    import select
+    import struct
+else:
+    from select import select
 import socket
 import ssl
 
@@ -32,6 +39,7 @@ class XAsyncSocketsPool :
         self._processing   = None
         self._microWorkers = None
         self._opLock       = allocate_lock()
+        if _IS_MICROPYTHON: self._poll = poll()
         self._asyncSockets = { }
         self._readList     = [ ]
         self._writeList    = [ ]
@@ -118,46 +126,56 @@ class XAsyncSocketsPool :
         udpSockEvtBuf = bytearray(32)
         
         while self._processing :
+            if _IS_MICROPYTHON:
+                for socket in self._readList:
+                    self._poll.register(socket, select.POLLIN)
+                for socket in self._writeList:
+                    self._poll.register(socket, select.POLLOUT)
             try :
                 try :
-                    rd, wr, ex = select( self._readList,
-                                         self._writeList,
-                                         self._readList,
-                                         XAsyncSocketsPool._CHECK_SEC_INTERVAL )
-                except KeyboardInterrupt :
-                    break
-                except :
+                    if _IS_MICROPYTHON:
+                        ready = self._poll.poll(int(self._CHECK_SEC_INTERVAL * 1000))
+                    else:
+                        rd, wr, ex = select( self._readList,
+                                             self._writeList,
+                                             self._readList,
+                                             self._CHECK_SEC_INTERVAL )
+                except KeyboardInterrupt as ex :
+                    raise ex
+                except Exception as ex:
                     continue
                 if not self._processing :
                     break
-                for socketsList in ex, wr, rd :
-                    for sock in socketsList :
-                        if sock == self._udpSockEvt :
-                            self._udpSockEvt.recv_into(udpSockEvtBuf)
-                        else :
-                            asyncSocket = self._asyncSockets.get(sock.fileno())
-                            if asyncSocket :
-                                if self._socketListAdd(sock, self._handlingList) :
-                                    if socketsList is rd :
-                                        if self._microWorkers :
-                                            self._microWorkers.AddJob(jobReadyForReading, (asyncSocket, sock))
-                                        else :
-                                            jobReadyForReading(asyncSocket)
-                                    elif socketsList is wr :
-                                        self._socketListRemove(sock, self._writeList)
-                                        if self._microWorkers :
-                                            self._microWorkers.AddJob(jobReadyForWriting, (asyncSocket, sock))
-                                        else :
-                                            jobReadyForWriting(asyncSocket)
-                                    else :
-                                        self._removeSocket(sock)
-                                        if self._microWorkers :
-                                            self._microWorkers.AddJob(jobExceptionalCondition, (asyncSocket, sock))
-                                        else :
-                                            jobExceptionalCondition(asyncSocket)
-                            else :
-                                self._removeSocket(sock)
-                                sock.close()
+                if _IS_MICROPYTHON:
+                    for socket, mask in ready :
+                        if (0x20) & mask:
+                            self._poll.unregister(socket)
+                            continue
+                        asyncSocket = self._asyncSockets.get(id(socket), None)
+                        if asyncSocket and self._socketListAdd(socket, self._handlingList) :
+                            # POLLIN | POLLRDNORM | POLLRDBAND | POLLPRI
+                            if ((select.POLLIN | 0x40 | 0x80 | 0x2) & mask):
+                                asyncSocket.OnReadyForReading()
+                            # POLLOUT | POLLWRNORM | POLLWRBAND
+                            elif ((select.POLLOUT | 0x100 | 0x200) & mask):
+                                asyncSocket.OnReadyForWriting()
+                            # POLLNVAL
+                            else:
+                                asyncSocket.OnExceptionalCondition()
+                            self._socketListRemove(socket, self._handlingList)
+                        self._poll.unregister(socket)
+                else:
+                    for socketsList in ex, wr, rd :
+                        for socket in socketsList :
+                            asyncSocket = self._asyncSockets.get(id(socket), None)
+                            if asyncSocket and self._socketListAdd(socket, self._handlingList) :
+                                if socketsList is ex :
+                                    asyncSocket.OnExceptionalCondition()
+                                elif socketsList is wr :
+                                    asyncSocket.OnReadyForWriting()
+                                else :
+                                    asyncSocket.OnReadyForReading()
+                                self._socketListRemove(socket, self._handlingList)
                 sec = perf_counter()
                 if sec > timeSec + XAsyncSocketsPool._CHECK_SEC_INTERVAL :
                     timeSec = sec
@@ -423,9 +441,10 @@ class XAsyncTCPServer(XAsyncSocket) :
             raise XAsyncTCPServerException('Create : Cannot open socket (no enought memory).')
         try :
             srvSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            ai = socket.getaddrinfo(*srvAddr)
-            addr = ai[0][-1]
-            srvSocket.bind(addr)
+            if _IS_MICROPYTHON:
+                srvSocket.bind(socket.getaddrinfo(srvAddr[0], srvAddr[1])[0][-1])
+            else:
+                srvSocket.bind(srvAddr)
             srvSocket.listen(srvBacklog)
         except :
             raise XAsyncTCPServerException('Create : Error to binding the TCP server on this address.')
@@ -454,6 +473,12 @@ class XAsyncTCPServer(XAsyncSocket) :
     def OnReadyForReading(self) :
         try :
             cliSocket, cliAddr = self._socket.accept()
+            if _IS_MICROPYTHON:
+                # b'\x02\x00\x89L\x7f\x00\x00\x01'
+                address = ".".join([str(byte[0])
+                                    for byte in struct.unpack('ssss', cliAddr[4:8])])
+                port = struct.unpack('H', cliAddr[2:4])[0]
+                cliAddr = (address, port)
         except :
             return
         recvBufSlot = self._bufSlots.GetAvailableSlot()

@@ -423,7 +423,9 @@ class XAsyncTCPServer(XAsyncSocket) :
             raise XAsyncTCPServerException('Create : Cannot open socket (no enought memory).')
         try :
             srvSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            srvSocket.bind(srvAddr)
+            ai = socket.getaddrinfo(*srvAddr)
+            addr = ai[0][-1]
+            srvSocket.bind(addr)
             srvSocket.listen(srvBacklog)
         except :
             raise XAsyncTCPServerException('Create : Error to binding the TCP server on this address.')

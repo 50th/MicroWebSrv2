@@ -240,7 +240,7 @@ mws2.RequestsTimeoutSec = 60
 
 # All pages not found will be redirected to the home '/',
 mws2.NotFoundURL = '/'
-# mws2.BindAddress = ("0.0.0.0", 8765)
+mws2.BindAddress = ("0.0.0.0", 8765)
 
 # Starts the server as easily as possible in managed mode,
 mws2.StartManaged()

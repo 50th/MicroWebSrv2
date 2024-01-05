@@ -443,7 +443,7 @@ class XAsyncTCPServer(XAsyncSocket) :
         try :
             srvSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             if _IS_MICROPYTHON:
-                srvSocket.bind(socket.getaddrinfo(srvAddr[0], srvAddr[1])[0][-1])
+                srvSocket.bind(socket.getaddrinfo(*srvAddr)[0][-1])
             else:
                 srvSocket.bind(srvAddr)
             srvSocket.listen(srvBacklog)

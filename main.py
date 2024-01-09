@@ -104,101 +104,24 @@ def RequestTestPost(microWebSrv2, request) :
         firstname = ""
         lastname = ""
         filename = ""
-    content = """\
-    <!DOCTYPE html>
-    <html>
-        <head>
-            <title>File upload result</title>
-        </head>
-        <body>
-            <h2>File upload result</h2>
-            Hello %s %s :) -- you uploaded %s (server saved to %s)<br />
-        </body>
-    </html>
-    """ % (MicroWebSrv2.HTMLEscape(firstname),
-           MicroWebSrv2.HTMLEscape(lastname),
-           MicroWebSrv2.HTMLEscape(filename),
-           MicroWebSrv2.HTMLEscape(saved_as)
-           )
-    request.Response.ReturnOk(content)
+    # content = """\
+    # <!DOCTYPE html>
+    # <html>
+    #     <head>
+    #         <title>File upload result</title>
+    #     </head>
+    #     <body>
+    #         <h2>File upload result</h2>
+    #         Hello %s %s :) -- you uploaded %s (server saved to %s)<br />
+    #     </body>
+    # </html>
+    # """ % (MicroWebSrv2.HTMLEscape(firstname),
+    #        MicroWebSrv2.HTMLEscape(lastname),
+    #        MicroWebSrv2.HTMLEscape(filename),
+    #        MicroWebSrv2.HTMLEscape(saved_as)
+    #        )
+    request.Response
 
-# ============================================================================
-# ============================================================================
-# ============================================================================
-
-def OnWebSocketAccepted(microWebSrv2, webSocket) :
-    print('Example WebSocket accepted:')
-    print('   - User   : %s:%s' % webSocket.Request.UserAddress)
-    print('   - Path   : %s'    % webSocket.Request.Path)
-    print('   - Origin : %s'    % webSocket.Request.Origin)
-    if webSocket.Request.Path.lower() == '/wschat' :
-        WSJoinChat(webSocket)
-    else :
-        webSocket.OnTextMessage   = OnWebSocketTextMsg
-        webSocket.OnBinaryMessage = OnWebSocketBinaryMsg
-        webSocket.OnClosed        = OnWebSocketClosed
-
-# ============================================================================
-# ============================================================================
-# ============================================================================
-
-def OnWebSocketTextMsg(webSocket, msg) :
-    print('WebSocket text message: %s' % msg)
-    webSocket.SendTextMessage('Received "%s"' % msg)
-
-# ------------------------------------------------------------------------
-
-def OnWebSocketBinaryMsg(webSocket, msg) :
-    print('WebSocket binary message: %s' % msg)
-
-# ------------------------------------------------------------------------
-
-def OnWebSocketClosed(webSocket) :
-    print('WebSocket %s:%s closed' % webSocket.Request.UserAddress)
-
-# ============================================================================
-# ============================================================================
-# ============================================================================
-
-global _chatWebSockets
-_chatWebSockets = [ ]
-
-global _chatLock
-_chatLock = allocate_lock()
-
-# ------------------------------------------------------------------------
-
-def WSJoinChat(webSocket) :
-    webSocket.OnTextMessage = OnWSChatTextMsg
-    webSocket.OnClosed      = OnWSChatClosed
-    addr = webSocket.Request.UserAddress
-    with _chatLock :
-        for ws in _chatWebSockets :
-            ws.SendTextMessage('<%s:%s HAS JOINED THE CHAT>' % addr)
-        _chatWebSockets.append(webSocket)
-        webSocket.SendTextMessage('<WELCOME %s:%s>' % addr)
-
-# ------------------------------------------------------------------------
-
-def OnWSChatTextMsg(webSocket, msg) :
-    addr = webSocket.Request.UserAddress
-    with _chatLock :
-        for ws in _chatWebSockets :
-            ws.SendTextMessage('<%s:%s> %s' % (addr[0], addr[1], msg))
-
-# ------------------------------------------------------------------------
-
-def OnWSChatClosed(webSocket) :
-    addr = webSocket.Request.UserAddress
-    with _chatLock :
-        if webSocket in _chatWebSockets :
-            _chatWebSockets.remove(webSocket)
-            for ws in _chatWebSockets :
-                ws.SendTextMessage('<%s:%s HAS LEFT THE CHAT>' % addr)
-
-# ============================================================================
-# ============================================================================
-# ============================================================================
 
 print()
 
@@ -206,10 +129,6 @@ print()
 pyhtmlMod = MicroWebSrv2.LoadModule('PyhtmlTemplate')
 pyhtmlMod.ShowDebug = True
 pyhtmlMod.SetGlobalVar('TestVar', 12345)
-
-# Loads the WebSockets module globally and configure it,
-wsMod = MicroWebSrv2.LoadModule('WebSockets')
-wsMod.OnWebSocketAccepted = OnWebSocketAccepted
 
 # Instanciates the MicroWebSrv2 class,
 mws2 = MicroWebSrv2()
@@ -220,18 +139,8 @@ mws2 = MicroWebSrv2()
 #                 keyFile  = 'SSL-Cert/openhc2.key' )
 
 # For embedded MicroPython, use a very light configuration,
-mws2.SetEmbeddedConfig()
+mws2.SetLightConfig()
 
-# mws2.RootPath = '/flash/www' # E.g., MicroPython
-# Confirm that RootPath will resolve for home URL
-HOME = '/'
-if not mws2.ResolvePhysicalPath(HOME):
-    raise MicroWebSrv2Exception(
-        "RootPath '%s' does not resolve with URL '%s'" % (mws2.RootPath, HOME)
-    )
-
-# All pages not found will be redirected to the home,
-mws2.NotFoundURL = HOME
 # Allow up to 32 MB upload
 mws2.MaxRequestContentLength = 32 * 1024 * 1024
 
@@ -240,6 +149,7 @@ mws2.RequestsTimeoutSec = 60
 
 # All pages not found will be redirected to the home '/',
 mws2.NotFoundURL = '/'
+mws2.UploadPath = './www'
 mws2.BindAddress = ("0.0.0.0", 8765)
 
 # Starts the server as easily as possible in managed mode,

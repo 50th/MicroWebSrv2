@@ -129,9 +129,9 @@ class XAsyncSocketsPool :
         while self._processing :
             if _IS_MICROPYTHON:
                 for socket in self._readList:
-                    self._poll.register(socket, select.POLLIN)
+                    self._poll.register(socket.fileno(), select.POLLIN)
                 for socket in self._writeList:
-                    self._poll.register(socket, select.POLLOUT)
+                    self._poll.register(socket.fileno(), select.POLLOUT)
             try :
                 try :
                     if _IS_MICROPYTHON:
@@ -148,23 +148,22 @@ class XAsyncSocketsPool :
                 if not self._processing :
                     break
                 if _IS_MICROPYTHON:
-                    for socket, mask in ready :
-                        if (0x20) & mask:
-                            self._poll.unregister(socket)
-                            continue
-                        asyncSocket = self._asyncSockets.get(id(socket), None)
-                        if asyncSocket and self._socketListAdd(socket, self._handlingList) :
-                            # POLLIN | POLLRDNORM | POLLRDBAND | POLLPRI
-                            if ((select.POLLIN | 0x40 | 0x80 | 0x2) & mask):
-                                asyncSocket.OnReadyForReading()
-                            # POLLOUT | POLLWRNORM | POLLWRBAND
-                            elif ((select.POLLOUT | 0x100 | 0x200) & mask):
-                                asyncSocket.OnReadyForWriting()
-                            # POLLNVAL
-                            else:
-                                asyncSocket.OnExceptionalCondition()
-                            self._socketListRemove(socket, self._handlingList)
-                        self._poll.unregister(socket)
+                    for socket_fileno, mask in ready :
+                        asyncSocket = self._asyncSockets.get(socket_fileno, None)
+                        if asyncSocket:
+                            socket = asyncSocket.GetSocketObj()
+                            if self._socketListAdd(socket, self._handlingList) :
+                                # POLLIN | POLLRDNORM | POLLRDBAND | POLLPRI
+                                if (select.POLLIN & mask):
+                                    asyncSocket.OnReadyForReading()
+                                # POLLOUT | POLLWRNORM | POLLWRBAND
+                                elif (select.POLLOUT & mask):
+                                    asyncSocket.OnReadyForWriting()
+                                # POLLNVAL
+                                else:
+                                    asyncSocket.OnExceptionalCondition()
+                                self._socketListRemove(socket, self._handlingList)
+                        self._poll.unregister(socket_fileno)
                 else:
                     for socketsList in ex, wr, rd :
                         for socket in socketsList :
@@ -474,12 +473,12 @@ class XAsyncTCPServer(XAsyncSocket) :
     def OnReadyForReading(self) :
         try :
             cliSocket, cliAddr = self._socket.accept()
-            if _IS_MICROPYTHON_LINUX:   # TODO Resolve ports/unix dependency
-                # b'\x02\x00\x89L\x7f\x00\x00\x01'
-                address = ".".join([str(byte[0])
-                                    for byte in struct.unpack('ssss', cliAddr[4:8])])
-                port = struct.unpack('H', cliAddr[2:4])[0]
-                cliAddr = (address, port)
+            # if _IS_MICROPYTHON_LINUX:   # TODO Resolve ports/unix dependency
+            #     # b'\x02\x00\x89L\x7f\x00\x00\x01'
+            #     address = ".".join([str(byte[0])
+            #                         for byte in struct.unpack('ssss', cliAddr[4:8])])
+            #     port = struct.unpack('H', cliAddr[2:4])[0]
+            #     cliAddr = (address, port)
         except :
             return
         recvBufSlot = self._bufSlots.GetAvailableSlot()

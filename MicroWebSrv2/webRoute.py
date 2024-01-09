@@ -29,7 +29,7 @@ def WebRoute(method=None, routePath=None, name=None) :
 
 def RegisterRoute(handler, method, routePath, name=None) :
     # warning:  Fails in MicroPython when using a closure.
-    #if type(handler) is not type(lambda x:x) :
+    # if type(handler) is not type(lambda x:x) :
     #    raise ValueError('"handler" must be a function.')
     if not isinstance(method, str) or len(method) == 0 :
         raise ValueError('"method" requires a not empty string.')

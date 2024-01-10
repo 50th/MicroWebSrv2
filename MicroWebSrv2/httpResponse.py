@@ -262,7 +262,7 @@ class HttpResponse :
 
     # ------------------------------------------------------------------------
 
-    def ReturnStream(self, code, stream) :
+    def ReturnStream(self, stream, code=200) :
         if not isinstance(code, int) or code <= 0 :
             raise ValueError('"code" must be a positive integer.')
         if not hasattr(stream, 'readinto') or not hasattr(stream, 'close') :
@@ -295,7 +295,7 @@ class HttpResponse :
 
     # ------------------------------------------------------------------------
 
-    def Return(self, code, content=None) :
+    def Return(self, content=None, code=200) :
         if not isinstance(code, int) or code <= 0 :
             raise ValueError('"code" must be a positive integer.')
         if self._hdrSent :
@@ -325,7 +325,7 @@ class HttpResponse :
 
     # ------------------------------------------------------------------------
 
-    def ReturnJSON(self, code, obj) :
+    def ReturnJSON(self, obj, code=200) :
         if not isinstance(code, int) or code <= 0 :
             raise ValueError('"code" must be a positive integer.')
         self._contentType = 'application/json'
@@ -333,17 +333,7 @@ class HttpResponse :
             content = json.dumps(obj)
         except :
             raise ValueError('"obj" cannot be converted into JSON format.')
-        self.Return(code, content)
-
-    # ------------------------------------------------------------------------
-
-    def ReturnOk(self, content=None) :
-        self.Return(200, content)
-
-    # ------------------------------------------------------------------------
-
-    def ReturnOkJSON(self, obj) :
-        self.ReturnJSON(200, obj)
+        self.Return(content, code)
 
     # ------------------------------------------------------------------------
 
@@ -368,12 +358,12 @@ class HttpResponse :
         if not self._contentType :
             self._contentType = self._mws2.GetMimeTypeFromFilename(filename)
         self._contentLength = size
-        self.ReturnStream(200, file)
+        self.ReturnStream(file, 200)
 
     # ------------------------------------------------------------------------
 
     def ReturnNotModified(self) :
-        self.Return(304)
+        self.Return(code=304)
 
     # ------------------------------------------------------------------------
 
@@ -381,12 +371,12 @@ class HttpResponse :
         if not isinstance(location, str) or len(location) == 0 :
             raise ValueError('"location" must be a not empty string.')
         self.SetHeader('Location', location)
-        self.Return(307)
+        self.Return(code=307)
 
     # ------------------------------------------------------------------------
 
     def ReturnBadRequest(self) :
-        self.Return(400)
+        self.Return(code=400)
 
     # ------------------------------------------------------------------------
 
@@ -399,12 +389,12 @@ class HttpResponse :
         if realm :
             wwwAuth += (' realm="%s"' % realm.replace('"', "'")) if realm else ''
         self.SetHeader('WWW-Authenticate', wwwAuth)
-        self.Return(401)
+        self.Return(code=401)
 
     # ------------------------------------------------------------------------
 
     def ReturnForbidden(self) :
-        self.Return(403)
+        self.Return(code=403)
 
     # ------------------------------------------------------------------------
 
@@ -412,32 +402,32 @@ class HttpResponse :
         if self._mws2._notFoundURL :
             self.ReturnRedirect(self._mws2._notFoundURL)
         else :
-            self.Return(404)
+            self.Return(code=404)
 
     # ------------------------------------------------------------------------
 
     def ReturnMethodNotAllowed(self) :
-        self.Return(405)
+        self.Return(code=405)
 
     # ------------------------------------------------------------------------
 
     def ReturnEntityTooLarge(self) :
-        self.Return(413)
+        self.Return(code=413)
 
     # ------------------------------------------------------------------------
 
     def ReturnInternalServerError(self) :
-        self.Return(500)
+        self.Return(code=500)
 
     # ------------------------------------------------------------------------
 
     def ReturnNotImplemented(self) :
-        self.Return(501)
+        self.Return(code=501)
 
     # ------------------------------------------------------------------------
 
     def ReturnServiceUnavailable(self) :
-        self.Return(503)
+        self.Return(code=503)
 
     # ------------------------------------------------------------------------
 

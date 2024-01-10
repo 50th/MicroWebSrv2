@@ -214,14 +214,14 @@ class HttpRequest :
 
     # ------------------------------------------------------------------------
 
-    def GetPostedJSONObject(self) :
+    def GetPostedJSONObject(self) -> dict:
         if self.ContentType.lower() == 'application/json' :
             try :
                 s = bytes(self._content).decode('UTF-8')
                 return json.loads(s)
             except :
                 pass
-        return None
+        return {}
 
     # ------------------------------------------------------------------------
 

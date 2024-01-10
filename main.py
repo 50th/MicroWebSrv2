@@ -120,7 +120,7 @@ def RequestTestPost(microWebSrv2, request) :
     #        MicroWebSrv2.HTMLEscape(filename),
     #        MicroWebSrv2.HTMLEscape(saved_as)
     #        )
-    request.Response
+    request.Response.ReturnOk('ok')
 
 
 print()

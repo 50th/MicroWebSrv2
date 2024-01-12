@@ -76,6 +76,8 @@ def ResolveRoute(method, path) :
         path = path.lower()
         if len(path) > 1 and path.endswith('/') :
             path = path[:-1]
+        if path.startswith('//'):
+            path = path[1:]
         for regRoute in _registeredRoutes :
             if regRoute.Method == method :
                 reMatch = regRoute.Regex.match(path)

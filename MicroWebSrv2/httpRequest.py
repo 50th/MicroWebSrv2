@@ -179,7 +179,7 @@ class HttpRequest :
     # ------------------------------------------------------------------------
 
     def GetPostedForm(self) :
-        res = { }
+        res = {}
         if self.ContentType.lower() == 'application/x-www-form-urlencoded' :
             try :
                 elements = bytes(self._content).decode('UTF-8').split('&')
@@ -345,17 +345,13 @@ class HttpRequest :
         Argument form_data is content between boundaries (i.e. an item from
         list returned by __extract_form_parts() above).
         """
-        all_text = False
         try:
             form_str = form_data.decode('utf-8')
-            all_text = True
+            return self.__parse_multi_text(form_str)
         except:
             pass
-        if all_text:
-            return self.__parse_multi_text(form_str)
 
         ret_dict = {}
-
         # Separate header text from binary file data.
         disp_str = "Content-Disposition: form-data; "
         str_start = 0
@@ -369,11 +365,10 @@ class HttpRequest :
 
         # Save to drive.
         # TODO: Should sanitize the filename in case of malicious user.
-        if "name" in tmp_dict and "filename" in tmp_dict:
-            ret_dict[tmp_dict["name"]] = tmp_dict["filename"]
-            upload_dir = self._mws2._uploadPath
-            ret_dict["saved_as"] = "{}/{}".format(upload_dir, tmp_dict["filename"])
-            with open(ret_dict["saved_as"], "wb") as bin_fh:
+        if 'name' in tmp_dict and 'filename' in tmp_dict:
+            ret_dict[tmp_dict['name']] = tmp_dict['filename']
+            ret_dict['saved_as'] = '{}/{}'.format(self._mws2.UploadPath, tmp_dict['filename'])
+            with open(ret_dict['saved_as'], 'wb') as bin_fh:
                 bin_fh.write(form_data[str_end:])
             self._mws2.Log('ret_dict: %s' % ret_dict, self._mws2.DEBUG)
         else:
@@ -394,11 +389,13 @@ class HttpRequest :
         disp_str = "Content-Disposition: form-data; "
         header = header_content[0].split(disp_str)[1]
 
-        if "filename" in header:
+        if 'filename' in header:
             tmp_dict = self.__parse_upload_header(header)
-            if "name" in tmp_dict and "filename" in tmp_dict:
-                ret_dict[tmp_dict["name"]] = tmp_dict["filename"]
-                ret_dict[tmp_dict["filename"]] = header_content[1]
+            if 'name' in tmp_dict and 'filename' in tmp_dict:
+                ret_dict[tmp_dict['name']] = {
+                    'filename': tmp_dict['filename'],
+                    'file': header_content[1],
+                }
             else:
                 self._mws2.Log('Cannot parse: %s' % header,
                             self._mws2.ERROR)

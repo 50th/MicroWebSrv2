@@ -353,7 +353,7 @@ class HttpResponse :
             self.ReturnForbidden()
             return
         if attachmentName :
-            cd = 'attachment; filename="%s"' % attachmentName.replace('"', "'")
+            cd = 'attachment; filename=%s' % attachmentName.replace('"', "'")
             self.SetHeader('Content-Disposition', cd)
         if not self._contentType :
             self._contentType = self._mws2.GetMimeTypeFromFilename(filename)

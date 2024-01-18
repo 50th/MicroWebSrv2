@@ -147,7 +147,7 @@ class HttpResponse :
             except :
                 self._xasCli.Close()
                 self._mws2.Log( 'Stream cannot be read for request "%s".'
-                                % self._request._path,
+                                % self._request.Path,
                                 self._mws2.ERROR )
                 return
         if self._sendingBuf :
@@ -203,8 +203,8 @@ class HttpResponse :
                         % ( self._xasCli.CliAddr[0],
                             self._xasCli.CliAddr[1],
                             ('SSL-' if self.IsSSL else ''),
-                            self._request._method,
-                            self._request._path,
+                            self._request.Method,
+                            self._request.Path,
                             code,
                             reason ),
                         self._mws2.DEBUG )
@@ -251,7 +251,7 @@ class HttpResponse :
             raise ValueError('"upgrade" must be a not empty string.')
         if self._hdrSent :
             self._mws2.Log( 'Response headers already sent for request "%s".'
-                            % self._request._path,
+                            % self._request.Path,
                             self._mws2.WARNING )
             return
         self.SetHeader('Connection', 'Upgrade')
@@ -269,14 +269,14 @@ class HttpResponse :
             raise ValueError('"stream" must be a readable buffer protocol object.')
         if self._hdrSent :
             self._mws2.Log( 'Response headers already sent for request "%s".'
-                            % self._request._path,
+                            % self._request.Path,
                             self._mws2.WARNING )
             try :
                 stream.close()
             except :
                 pass
             return
-        if self._request._method != 'HEAD' :
+        if self._request.Method != 'HEAD' :
             self._stream          = stream
             self._sendingBuf      = memoryview(self._xasCli.SendingBuffer)
             self._xasCli.OnClosed = self._onClosed
@@ -300,7 +300,7 @@ class HttpResponse :
             raise ValueError('"code" must be a positive integer.')
         if self._hdrSent :
             self._mws2.Log( 'Response headers already sent for request "%s".'
-                            % self._request._path,
+                            % self._request.Path,
                             self._mws2.WARNING )
             return
         if not content :
@@ -318,10 +318,15 @@ class HttpResponse :
             self._contentType = 'application/octet-stream'
         self._contentLength = len(content)
         data = self._makeResponseHdr(code)
-        if self._request._method != 'HEAD' :
+        if self._request.Method != 'HEAD' :
             data += bytes(content)
         self._xasCli.AsyncSendData(data, onDataSent=self._onDataSent)
         self._hdrSent = True
+
+    # ------------------------------------------------------------------------
+
+    def ReturnOk(self, content=None) :
+        self.Return(content, 200)
 
     # ------------------------------------------------------------------------
 

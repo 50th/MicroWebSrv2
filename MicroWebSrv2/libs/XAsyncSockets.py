@@ -4,6 +4,7 @@ Copyright © 2019 Jean-Christophe Bos & HC² (www.hc2.fr)
 """
 
 import sys
+
 _IS_MICROPYTHON = sys.implementation.name == 'micropython'
 _IS_MICROPYTHON_LINUX = _IS_MICROPYTHON and (sys.platform == 'linux')
 
@@ -813,8 +814,8 @@ class XAsyncTCPClient(XAsyncSocket) :
                     self._onDataSentArg = onDataSentArg
                     self._asyncSocketsPool.NotifyNextReadyForWriting(self, True)
                     return True
-            except :
-                pass
+            except Exception as e:
+                print(e)
             raise XAsyncTCPClientException('AsyncSendData : "data" is incorrect.')
         return False
 

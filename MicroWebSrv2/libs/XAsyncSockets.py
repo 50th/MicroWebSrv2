@@ -815,7 +815,8 @@ class XAsyncTCPClient(XAsyncSocket) :
                     self._asyncSocketsPool.NotifyNextReadyForWriting(self, True)
                     return True
             except Exception as e:
-                print(e)
+                # print(e)
+                pass
             raise XAsyncTCPClientException('AsyncSendData : "data" is incorrect.')
         return False
 

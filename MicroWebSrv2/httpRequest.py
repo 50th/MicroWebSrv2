@@ -2,10 +2,10 @@
 The MIT License (MIT)
 Copyright © 2019 Jean-Christophe Bos & HC² (www.hc2.fr)
 """
-
 from   .              import *
 from   .httpResponse  import HttpResponse
 from   binascii       import a2b_base64
+import datetime
 import json
 
 # ============================================================================
@@ -22,6 +22,7 @@ class HttpRequest :
         self._mws2   = microWebSrv2
         self._xasCli = xasCli
         self._waitForRecvRequest()
+        self._tz = datetime.timezone(datetime.timedelta(hours=8))
 
     # ------------------------------------------------------------------------
 
@@ -244,8 +245,7 @@ class HttpRequest :
                 if len(auth) == 2 and auth[0].lower() == 'basic' :
                     auth = a2b_base64(auth[1].encode()).decode()
                     auth = auth.split(':')
-                    return ( auth[0].lower() == username.lower() and \
-                             auth[1] == password )
+                    return auth[0].lower() == username.lower() and auth[1] == password
             except :
                 pass
         return False
@@ -259,9 +259,7 @@ class HttpRequest :
         if auth :
             try :
                 auth = auth.split()
-                return ( len(auth) == 2 and \
-                         auth[0].lower() == 'bearer' and \
-                         auth[1] == token )
+                return len(auth) == 2 and auth[0].lower() == 'bearer' and auth[1] == token
             except :
                 pass
         return False
@@ -366,9 +364,11 @@ class HttpRequest :
         # Save to drive.
         # TODO: Should sanitize the filename in case of malicious user.
         if 'name' in tmp_dict and 'filename' in tmp_dict:
-            ret_dict[tmp_dict['name']] = tmp_dict['filename']
-            ret_dict['saved_as'] = '{}/{}'.format(self._mws2.UploadPath, tmp_dict['filename'])
-            with open(ret_dict['saved_as'], 'wb') as bin_fh:
+            ret_dict[tmp_dict['name']] = {
+                'filename': tmp_dict['filename']
+            }
+            ret_dict[tmp_dict['name']]['file'] = f'{self._mws2.UploadPath}/{tmp_dict["filename"]}.{datetime.datetime.now(self._tz).timestamp()}'
+            with open(ret_dict[tmp_dict['name']]['file'], 'wb') as bin_fh:
                 bin_fh.write(form_data[str_end:])
             self._mws2.Log('ret_dict: %s' % ret_dict, self._mws2.DEBUG)
         else:

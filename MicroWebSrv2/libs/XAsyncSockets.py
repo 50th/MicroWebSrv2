@@ -10,12 +10,10 @@ _IS_MICROPYTHON_LINUX = _IS_MICROPYTHON and (sys.platform == 'linux')
 
 from   _thread  import allocate_lock, start_new_thread, stack_size
 from   time     import sleep
-if _IS_MICROPYTHON:
-    from select import poll
-    import select
-    import struct
-else:
-    from select import select
+
+from select import poll
+import select
+import struct
 import socket
 import ssl
 
@@ -41,7 +39,7 @@ class XAsyncSocketsPool :
         self._processing   = None
         self._microWorkers = None
         self._opLock       = allocate_lock()
-        if _IS_MICROPYTHON: self._poll = poll()
+        self._poll = poll()
         self._asyncSockets = { }
         self._readList     = [ ]
         self._writeList    = [ ]
@@ -128,55 +126,35 @@ class XAsyncSocketsPool :
         udpSockEvtBuf = bytearray(32)
         
         while self._processing :
-            if _IS_MICROPYTHON:
-                for socket in self._readList:
-                    self._poll.register(socket.fileno(), select.POLLIN)
-                for socket in self._writeList:
-                    self._poll.register(socket.fileno(), select.POLLOUT)
+            for socket in self._readList:
+                self._poll.register(socket.fileno(), select.POLLIN)
+            for socket in self._writeList:
+                self._poll.register(socket.fileno(), select.POLLOUT)
             try :
                 try :
-                    if _IS_MICROPYTHON:
-                        ready = self._poll.poll(int(self._CHECK_SEC_INTERVAL * 1000))
-                    else:
-                        rd, wr, ex = select( self._readList,
-                                             self._writeList,
-                                             self._readList,
-                                             self._CHECK_SEC_INTERVAL )
+                    ready = self._poll.poll(int(self._CHECK_SEC_INTERVAL * 1000))
                 except KeyboardInterrupt as ex :
                     raise ex
                 except Exception as ex:
                     continue
                 if not self._processing :
                     break
-                if _IS_MICROPYTHON:
-                    for socket_fileno, mask in ready :
-                        asyncSocket = self._asyncSockets.get(socket_fileno, None)
-                        if asyncSocket:
-                            socket = asyncSocket.GetSocketObj()
-                            if self._socketListAdd(socket, self._handlingList) :
-                                # POLLIN | POLLRDNORM | POLLRDBAND | POLLPRI
-                                if (select.POLLIN & mask):
-                                    asyncSocket.OnReadyForReading()
-                                # POLLOUT | POLLWRNORM | POLLWRBAND
-                                elif (select.POLLOUT & mask):
-                                    asyncSocket.OnReadyForWriting()
-                                # POLLNVAL
-                                else:
-                                    asyncSocket.OnExceptionalCondition()
-                                self._socketListRemove(socket, self._handlingList)
-                        self._poll.unregister(socket_fileno)
-                else:
-                    for socketsList in ex, wr, rd :
-                        for socket in socketsList :
-                            asyncSocket = self._asyncSockets.get(id(socket), None)
-                            if asyncSocket and self._socketListAdd(socket, self._handlingList) :
-                                if socketsList is ex :
-                                    asyncSocket.OnExceptionalCondition()
-                                elif socketsList is wr :
-                                    asyncSocket.OnReadyForWriting()
-                                else :
-                                    asyncSocket.OnReadyForReading()
-                                self._socketListRemove(socket, self._handlingList)
+                for socket_fileno, mask in ready :
+                    asyncSocket = self._asyncSockets.get(socket_fileno, None)
+                    if asyncSocket:
+                        socket = asyncSocket.GetSocketObj()
+                        if self._socketListAdd(socket, self._handlingList) :
+                            # POLLIN | POLLRDNORM | POLLRDBAND | POLLPRI
+                            if (select.POLLIN & mask):
+                                asyncSocket.OnReadyForReading()
+                            # POLLOUT | POLLWRNORM | POLLWRBAND
+                            elif (select.POLLOUT & mask):
+                                asyncSocket.OnReadyForWriting()
+                            # POLLNVAL
+                            else:
+                                asyncSocket.OnExceptionalCondition()
+                            self._socketListRemove(socket, self._handlingList)
+                    self._poll.unregister(socket_fileno)
                 sec = perf_counter()
                 if sec > timeSec + XAsyncSocketsPool._CHECK_SEC_INTERVAL :
                     timeSec = sec

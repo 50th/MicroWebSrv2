@@ -207,7 +207,7 @@ class MicroWebSrv2 :
         if procStackSize == 0 and implementation.name == 'micropython' :
             procStackSize = 8*1024
         try :
-            saveStackSize = stack_size(procStackSize)
+            saveStackSize = procStackSize
         except Exception as ex :
             raise ValueError('"procStackSize" of %s is not correct (%s).' % (procStackSize, ex))
         self._xasPool = XAsyncSocketsPool()

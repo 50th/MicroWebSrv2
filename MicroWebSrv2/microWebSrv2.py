@@ -93,6 +93,7 @@ class MicroWebSrv2 :
         self._notFoundURL     = None
         self._allowAllOrigins = False
         self._corsAllowAll    = False
+        self._exposeHeaders   = None
         self._onLogging       = None
         self._xasSrv          = None
         self._xasPool         = None
@@ -536,6 +537,18 @@ class MicroWebSrv2 :
         if not isinstance(value, bool) :
             raise ValueError('"CORSAllowAll" must be a boolean.')
         self._corsAllowAll = value
+
+    # ------------------------------------------------------------------------
+
+    @property
+    def ExposeHeaders(self) :
+        return self._exposeHeaders
+
+    @ExposeHeaders.setter
+    def ExposeHeaders(self, value) :
+        if not isinstance(value, list) :
+            raise ValueError('"CORSAllowAll" must be a list.')
+        self._exposeHeaders = value
 
     # ------------------------------------------------------------------------
 

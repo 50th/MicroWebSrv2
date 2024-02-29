@@ -385,7 +385,7 @@ class HttpRequest :
         """
         # First line should at least have content-disposition and name.
         ret_dict = {}
-        header_content = form_str.split("\r\n\r\n")
+        header_content = form_str.split("\r\n\r\n", 1)
         disp_str = "Content-Disposition: form-data; "
         header = header_content[0].split(disp_str)[1]
 

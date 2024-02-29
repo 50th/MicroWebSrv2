@@ -289,6 +289,8 @@ class HttpResponse :
             self._contentType = 'application/octet-stream'
         if not self._contentLength :
             self.SetHeader('Transfer-Encoding', 'chunked')
+        if self._mws2.ExposeHeaders:
+            self.SetHeader('Access-Control-Expose-Headers', ', '.join(self._mws2.ExposeHeaders))
         data = self._makeResponseHdr(code)
         self._xasCli.AsyncSendData(data, onDataSent=self._onDataSent)
         self._hdrSent = True
@@ -317,6 +319,8 @@ class HttpResponse :
         elif not self._contentType :
             self._contentType = 'application/octet-stream'
         self._contentLength = len(content)
+        if self._mws2.ExposeHeaders:
+            self.SetHeader('Access-Control-Expose-Headers', ', '.join(self._mws2.ExposeHeaders))
         data = self._makeResponseHdr(code)
         if self._request.Method != 'HEAD' :
             data += bytes(content)

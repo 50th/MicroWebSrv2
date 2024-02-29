@@ -680,10 +680,11 @@ class XAsyncTCPClient(XAsyncSocket) :
                     except :
                         self._close()
                         return
-                if not n :
-                    self._close(XClosedReason.ClosedByPeer)
-                    return
-                self._sizeToRecv -= n
+                # if not n :
+                #     self._close(XClosedReason.ClosedByPeer)
+                #     return
+                if n is not None:
+                    self._sizeToRecv -= n
                 if not self._sizeToRecv :
                     data = self._rdBufView
                     self._rdBufView = None
